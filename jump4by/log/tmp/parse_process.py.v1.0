@@ -1,0 +1,183 @@
+#!/usr/bin/env python
+
+__contributor__ = 'Xingang Zhao'
+__edited_date__ = '2017.05.17'
+#=============================================================
+# aiming to preprocess the input according to the parses.
+#=============================================================
+sge = """
+#!/bin/bash
+#$ /bin/bash
+#$ -V 
+#$ -N  {0}
+#$ -pe {1} {2}
+#$ -j y
+#$ -cwd
+
+"""
+from io import *
+import time, os
+
+class ParseProcess(object):
+    """
+    class PreProcess:: aiming the process the input files and
+          orgnize the input data according to the input parses.
+
+    methods:: 
+          class_tasks:: orgnize the tasks w.r.t input parameters.
+          update_pool_env:: update the tasks environment when the
+              tasks move to direction.
+
+    """
+    def __init__(self, options, *args, **kwargs):
+
+        self.p = None
+        self.pool = None
+        # get the input parse %
+        if isinstance(options, dict):
+            self.class_options(options)
+
+    # classic the basic motion % 
+    def class_options(self, options):
+
+        overwrite = False
+        if options['overwrite'] is True and \
+            is_exist(options['pool']+'.pool'):
+            overwrite = True
+        #create input module according to the input program % 
+        if 'script' in options:
+            self.create_input(options['script'], overwrite)
+            return
+
+        # update the pool environmment info due to change
+        # calculation direction % 
+        if  'update' in options:
+            self.update_data(options, overwrite)
+
+        # submit the tasks by using scripts % 
+        if 'run' in options:
+            if options['run'] == 'submit':
+                self.project_tasks(options, overwrite, submit=True)
+                return 
+            
+            elif options['run'] == 'output':
+                # create input files for calculations % 
+                self.project_tasks(options, overwrite, submit=False)
+                if 'tarfile' in options:
+                    self.tarfile_data()
+                return
+
+    def update_parrallel_env(self, options, env):
+        
+        pool = options['pool']
+        
+
+            
+    def update_data(self, options, overwrite=False):
+        
+        # pool files exists % 
+        pool = options['pool']
+        if not is_exist(pool+'.pool') or overwrite is True:
+            create_pool(pool)          # create new pool
+            self.update_pool_env(pool) # set pool environment
+
+        # update the pool environmment info due to change % 
+        self.update_pool_env(options['pool'])
+        
+        # default parrellel environment % 
+        penv = parrallel_env
+        penv.update(options['cluster'])
+        self.update_parrallel_env(options, penv)
+
+        #update pool data % 
+        if overwrite: self.update_pool_data()
+
+    def tarfile_data(self):
+        pass 
+    # create pool env at ~/.local/jump2/pool %
+    def update_pool_env(self, pool):
+        """
+        update the runing environment of the tasks of pool
+        """
+        # for existed pool %
+        if is_exist(pool+'.pool'):
+            abspath = os.path.abspath(pool+'.pool') 
+            name = abspath.split('/')[-1]
+            path = abspath.replace(name,'')
+        
+        # for new pool %
+        else:
+            name = pool.split('/')[-1]
+            path = os.getcwd()
+
+        # basic info %
+        localtime = time.asctime(time.localtime(time.time()))
+        new_path = local_pool_path()
+
+        # mkdir ~/.local/jump2/pool direction %
+        if not os.path.isdir(new_path):
+            os.makedirs(new_path)
+
+        # store the basic info
+        with open(new_path+pool, 'wb') as f:
+            f.write('name : '+ name+ '\n')
+            f.write('path : '+ path+ '\n')
+            f.write('time : '+ localtime+ '\n')
+
+    #options % 
+    def post_option(self,option):
+        
+        option['run']  = 'submit'
+        if 'all' in option['args']: del option['args']
+        del option['check']
+        del option['update']
+        option['overwrite'] = False
+
+        pickle.dump((option),(open('.cluster','wb')))
+
+    # prepare the require source for jobs manager %
+    def project_tasks(self, option, overwrite=False, submit=False):
+        
+        # pool files exists % 
+        pool = option['pool']
+        if not is_exist(pool+'.pool'):
+            create_pool(pool)          # create new pool
+            self.update_pool_env(pool) # set pool environment
+        
+        # prepare input files or submit the tasks %
+        if submit is True:  # submit jobs % 
+            #self.submit_tasks(pool, True)
+            self.submit_tasks(option, True)
+
+        else:  #create input files % 
+            #self.submit_tasks(pool, False)
+            self.submit_tasks(option, False)
+
+        # store the info of initial option % 
+        self.post_option(option)
+
+    # prepare the input files % 
+    def submit_tasks(self, option, submit=False):
+        
+        #p = None
+        #p = self.load_current_pool(pool)
+        pool=option['pool']
+        self.load_current_pool(pool)
+        p =self.p
+        count_n = 0
+        for j in p['tasks']:
+            if p['tasks'][j]['status'] == 'wait' and \
+                    count_n <= option['cluster']['jobs']:
+                output_input(j, p, submit)
+                if not 'all' in option['args']: count_n += 1
+
+    # load the current pool %
+    def load_current_pool(self, pool):
+        
+        #p =None
+        all_pool = get_all_pools()
+        path = all_pool[pool]['path']
+        name = all_pool[pool]['name']
+        self.p = load_pool(path, name)
+        #return p
+    

@@ -1,0 +1,54 @@
+ running on   16 nodes
+ distr:  one band on    4 nodes,    4 groups
+ vasp.5.2.12 11Nov11 complex                                                    
+  
+ POSCAR found type information on POSCAR  H 
+ POSCAR found :  1 types and       1 ions
+ scaLAPACK will be used
+
+ ----------------------------------------------------------------------------- 
+|                                                                             |
+|  ADVICE TO THIS USER RUNNING 'VASP/VAMP'   (HEAR YOUR MASTER'S VOICE ...):  |
+|                                                                             |
+|      You have a (more or less) 'small supercell' and for smaller cells      |
+|      it is recommended  to use the reciprocal-space projection scheme!      |
+|      The real space optimization is not  efficient for small cells and it   |
+|      is also less accurate ...                                              |
+|      Therefore set LREAL=.FALSE. in the  INCAR file                         |
+|                                                                             |
+ ----------------------------------------------------------------------------- 
+
+ LDA part: xc-table for Pade appr. of Perdew
+ generate k-points for:   20   20   20
+ POSCAR, INCAR and KPOINTS ok, starting setup
+ WARNING: small aliasing (wrap around) errors must be expected
+ FFT: planning ...(           1 )
+ WAVECAR not read
+ entering main loop
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1    -0.227585674346E+01   -0.22759E+01   -0.13399E+02  2840   0.631E+01
+DAV:   2    -0.228484936095E+01   -0.89926E-02   -0.89133E-02  2840   0.261E+00
+DAV:   3    -0.228485006452E+01   -0.70357E-06   -0.70360E-06  2588   0.188E-02
+DAV:   4    -0.228485006442E+01    0.96442E-10   -0.50167E-11  2584   0.398E-05
+DAV:   5    -0.228485006440E+01    0.23981E-10    0.81167E-15  1776   0.219E-07    0.276E-01
+DAV:   6    -0.232953161248E+01   -0.44682E-01   -0.10728E-04  2592   0.965E-02BRMIX: very serious problems
+ the old and the new charge density differ
+ old charge density:     1.00000 new    0.99977
+    0.172E-01
+DAV:   7    -0.228725699734E+01    0.42275E-01    0.50796E-02  2616   0.184E-01BRMIX: very serious problems
+ the old and the new charge density differ
+ old charge density:     0.99977 new    1.00000
+    0.578E-03
+DAV:   8    -0.228725675148E+01    0.24586E-06   -0.56393E-07  1460   0.710E-03
+   1 F= -.22872568E+01 E0= -.22870376E+01  d E =-.228726E+01
+ curvature:   0.00 expect dE= 0.000E+00 dE for cont linesearch  0.000E+00
+ trial: gam= 0.00000 g(F)=  0.000E+00 g(S)=  0.258E-04 ort = 0.000E+00 (trialstep = 0.100E+01)
+ search vector abs. value=  0.258E-04
+ bond charge predicted
+       N       E                     dE             d eps       ncg     rms          rms(c)
+DAV:   1    -0.228727508420E+01   -0.18087E-04   -0.26017E-05  2304   0.383E-02    0.300E-03
+DAV:   2    -0.228727525285E+01   -0.16865E-06   -0.99213E-09  1160   0.937E-04
+   2 F= -.22872753E+01 E0= -.22870561E+01  d E =-.185014E-04
+ trial-energy change:   -0.000019  1 .order   -0.000022   -0.000026   -0.000018
+ step:   3.1559(harm=  3.1559)  dis= 0.00000  next Energy=    -2.287297 (dE=-0.407E-04)
+ reached required accuracy - stopping structural energy minimisation

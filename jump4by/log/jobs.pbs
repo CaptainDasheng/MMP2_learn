@@ -1,0 +1,47 @@
+
+
+
+
+
+#==========================================================
+#   relax_cell(PBE): multi-steps optimization;
+#   relax_ions(PBE): multi-steps ions;
+#   properties(PBE): dos/band/optics/carrier_mass;
+#==========================================================
+
+#==========================================================
+#multi-steps relax_cell:
+cd cell_relax
+for 
+do
+#
+done
+cd - 
+
+#==========================================================
+#mult-steps relax_ions:
+cp -r cell_relax ions_relax
+cd ions_relax
+for 
+do
+#
+done
+cd - 
+
+#==========================================================
+# scf
+cp -r ions_relax scf
+cd scf
+#
+cd -
+
+#==========================================================
+for task in xxxx
+do 
+cp -r scf task
+cd task
+#
+cd - 
+done
+
+#==========================================================

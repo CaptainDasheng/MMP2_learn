@@ -1,0 +1,23 @@
+#!/bin/bash 
+#$ -S /bin/bash 
+#$ -V 
+#$ -N test.dict 
+#$ -pe impi2 20 
+#$ -j y
+#$ -o .running
+#$ -cwd
+#$ -e .error
+
+if [ -f ".wait" ]; then
+rm .wait
+fi 
+
+source /share/apps/pylada/pylada_env.sh 
+# parellel environment % 
+P_ENV=/opt/intel/openmpi-1.8.4
+export OMP_NUM_THREADS=1 
+export PATH=$P_ENV/bin:$PATH
+export LD_INCLCUDE_PATH=$P_ENV/include:$LD_INCLUDE_PATH
+export LD_LIBRARY_PATH=$P_ENV/lib:$LD_LIBRARY_PATH
+
+jump2 --single /home/gordon/jump4by/example/test.dict  results/RbCuInBr

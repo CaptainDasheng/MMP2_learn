@@ -1,0 +1,39 @@
+ running on   16 nodes
+ distr:  one band on    4 nodes,    4 groups
+ vasp.5.2.12 11Nov11 complex                                                    
+  
+ POSCAR found type information on POSCAR  H 
+ POSCAR found :  1 types and       1 ions
+ scaLAPACK will be used
+
+ ----------------------------------------------------------------------------- 
+|                                                                             |
+|  ADVICE TO THIS USER RUNNING 'VASP/VAMP'   (HEAR YOUR MASTER'S VOICE ...):  |
+|                                                                             |
+|      You have a (more or less) 'small supercell' and for smaller cells      |
+|      it is recommended  to use the reciprocal-space projection scheme!      |
+|      The real space optimization is not  efficient for small cells and it   |
+|      is also less accurate ...                                              |
+|      Therefore set LREAL=.FALSE. in the  INCAR file                         |
+|                                                                             |
+ ----------------------------------------------------------------------------- 
+
+ LDA part: xc-table for Pade appr. of Perdew
+ generate k-points for:   20   20   20
+ found WAVECAR, reading the header
+  number of bands has changed, file:     4 present:     8
+  trying to continue reading WAVECAR, but it might fail
+ WARNING: stress and forces are not correct
+ POSCAR, INCAR and KPOINTS ok, starting setup
+ WARNING: small aliasing (wrap around) errors must be expected
+ FFT: planning ...(           1 )
+ reading WAVECAR
+ random initialization beyond band            5
+ the WAVECAR file was read sucessfully
+ charge-density read from file: jump2                                   
+ entering main loop
+       N       E                     dE             d eps       ncg     rms          rms(c)
+RMM:   1    -0.228682556160E+01   -0.22868E+01    0.00000E+00  4434   0.551E-04
+RMM:   2    -0.228682556176E+01   -0.16044E-09    0.00000E+00  4399   0.539E-04
+   1 F= -.22868256E+01 E0= -.22866695E+01  d E =-.312150E-03
+ writing wavefunctions

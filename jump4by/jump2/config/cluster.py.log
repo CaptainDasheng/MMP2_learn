@@ -1,0 +1,71 @@
+
+#===============================================================
+# script heads for different tasks manager.
+#===============================================================
+sge="""\
+#!/bin/bash 
+#$ -S /bin/bash 
+#$ -V 
+#$ -N {0} 
+#$ -pe {1} {2} 
+#$ -j y
+#$ -cwd
+#$ -e .error
+"""
+
+torque="""\
+#!/bin/bash
+#PBS -N {0}
+#PBS -S /bin/bash
+#PBS -r n
+#PBS -l nodes={1}:ppn={2}
+#PBS -l walltime=2400:00:00
+#PBS -j oe
+#PBS -V
+#PBS -e .error
+
+# go to work dir
+cd $PBS_O_WORKDIR
+"""
+
+slurm="""\
+"""
+
+lsf="""\
+#!/bin/sh
+#BSUB -q {0}
+#BSUB -app {2}
+#BSUB -a {3}
+#BSUB -o %J .error
+#BSUB -n {4}
+#BSUB -R "span[ptile={5}]" 
+"""
+
+default_managers={\
+'sge':sge, 'torque':torque, 'slurm':slurm,'lsf':lsf}
+
+#=============================================================
+# location of psudopotentials % 
+path_psudopotential='/home/xgzhao/usr/psudopotential/paw_pbe/'
+
+#=============================================================
+# location of the vdw_kernel.bibdat %
+path_vdw_kernel='/home/xgzhao/usr/vasp_vdw/'
+
+
+#=============================================================
+# parellel environment %
+
+#parallel_env = """\
+#export PATH=${0}/bin:$PATH
+#export LD_INCLCUDE_PATH=${0}/include:$LD_INCLUDE_PATH
+#export LD_LIBRARY_PATH=${0}/lib:$LD_LIBRARY_PATH
+#""".format(".")
+#=============================================================
+# tasks manager % 
+parrallel_env={'ppn':20, 'cluster':1, 'queue': 'impi2', 'jobs':10}
+cluster_qsub='qsub '
+pbs_manager='sge'
+path_mpi = 'export OMP_NUM_THREADS=1 \n\
+export PATH=/opt/intel/openmpi-1.8.4/bin:$PATH'
+path_libs = 'export LD_LIBRARY_PATH=/opt/intel/openmpi-1.8.4/lib:$LD_LIBRARY_PATH'

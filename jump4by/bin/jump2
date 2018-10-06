@@ -1,0 +1,18 @@
+#!/usr/bin/env python 
+# -*- coding: utf-8 -*-
+
+#===============================================================
+#
+#
+#
+#
+#
+#===============================================================
+
+__contributor__ = 'Xin-Gang Zhao'
+__edited_date__ = '2017.05.17'
+
+from jump2.utils.control  import run_jump2
+
+# run the main program %
+run_jump2()

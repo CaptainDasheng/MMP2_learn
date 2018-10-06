@@ -1,0 +1,629 @@
+# coding: utf-8
+# Copyright (c) JUMP2 Development Team.
+# Distributed under the terms of the JLU License.
+
+
+#=================================================================
+# This file is part of JUMP2.
+#
+# Copyright (C) 2017 Jilin University
+#
+#  Jump2 is a platform for high throughput calculation. It aims to 
+#  make simple to organize and run large numbers of tasks on the 
+#  superclusters and post-process the calculated results.
+#  
+#  Jump2 is a useful packages integrated the interfaces for ab initio 
+#  programs, such as, VASP, Guassian, QE, Abinit and 
+#  comprehensive workflows for automatically calculating by using 
+#  simple parameters. Lots of methods to organize the structures 
+#  for high throughput calculation are provided, such as alloy,
+#  heterostructures, etc.The large number of data are appended in
+#  the MySQL databases for further analysis by using machine 
+#  learning.
+#
+#  Jump2 is free software. You can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published 
+#  by the Free sofware Foundation, either version 3 of the License,
+#  or (at your option) and later version.
+# 
+#  You should have recieved a copy of the GNU General Pulbic Lincense
+#  along with Jump2. If not, see <https://www.gnu.org/licenses/>.
+#=================================================================
+
+""" to compute optical properties via scf + nonscf cal. """
+
+
+class VaspWorkflows(object):
+    """
+    Object to  organize the workflow for calculations, including optimization,
+        single point calculation and properties.
+    
+    methods:
+        optics::
+        epsilon::
+        HSE_gap::
+        elf::
+        band_structure::
+        projected_dos::
+        carriers_mass::
+        
+    """
+    def __init__(self, func, stdin=None, stdout=None, *args, **kwargs):
+        
+
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+        
+        params.update(kwargs)
+        if stdin is not None:
+            params['icharg'] = 1
+            params['istart'] = 1
+        else:
+            params['icharg'] = 2
+            params['istart'] = 0
+
+        # run order % 
+        default_task_order=('optimize', 'scf', 'nonscf')
+        
+        # ordered relaxation loop %
+        if 'optimize' in vasp.task:
+            stdin = self.relax_cell_ions(vasp, stdin, stdout, *args, **params)
+
+        stdin = self.self_consistent_calc(vasp, stdin, stdout, *args, **params)
+        
+        if 'nonscf' in vasp.task:
+            for  t in vasp.task['nonscf']:
+               self.property_factory(t, vasp, stdin, *args, **kwargs) 
+
+    def property_factory(self, task, func, stdin, *args, **kwargs):
+
+        if 'optic' in task:
+            self.optics(func, stdin, *args, **kwargs)
+
+        if 'band' in task:
+            self.band_structure(func, stdin, *args, **kwargs)
+
+        if 'hse_gap' in task:
+            self.HSE_gap(func, stdin, *args, **kwargs)
+
+        if 'epsilon' in task:
+            self.epsilon(func, stdin, *args, **kwargs)
+
+        if 'elf' in task:
+            self.elf(func, stdin, *args, **kwargs)
+
+        if 'masses' in task:
+            self.carriers_mass(func, stdin, *args, **kwargs)
+        
+        if 'dos' in task:
+            self.projected_dos(func, stdin, *args, **kwargs)
+
+    
+    def optics(self, func, stdin=None, jdos=True, alpha=True, matrix=True, 
+                                                         *args, **kwargs):
+        """
+        Methods to get the optical properties, including joined 
+            density of orbitals states (JDOS), orbsorption (Alpha), 
+            transition dipole maxtrix (TDM), as well as other relvant 
+            properties of dielectric matrix with frequencies.
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params['loptics'] = True
+        params['nedos'] = 3001
+        params['cshift'] = 0.01
+        params['npar'] = 1
+
+        vasp.kpoints = 0.05
+
+        if stdin is None:
+            raise IOError ("No such derectory")
+        else: 
+            path = join(stdin, 'optics')
+            self.calc_properties(vasp.structure, stdin, path, *args, **params)
+
+
+    def epsilon(self, func, stdin, *args, **kwargs):
+        """
+        Method to get static dielectric matrix. 
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+
+        params['lepsilon'] = True
+        params['nedos'] = 3001
+        
+        if stdin is None:
+            raise IOError ("No such derectory")
+        else: 
+            path = join(stdin, 'epsilon')
+            self.calc_properties(vasp, stdin, path, *args, **params)
+
+    def band_structure(self, func, stdin, *args, **kwargs):
+        """
+        Method to run the band structure calculations. 
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+
+        params['nbands'] = 2*vasp.get_nband(stdin)
+        params['nedos'] = 3001
+
+        kpoints = vasp.get_high_symmetry_path(stdin)
+        for k in kpoints:
+            if 'hse' not in vasp.functional:
+                vasp.kpoints = '\n30\nline mode\ndirect\n{0}'.format(kpoints[k])
+                path = join(stdin, k)
+                self.calc_properties(vasp, stdin, path, *args, **params)
+            else:
+                # under developments % 
+                pass
+
+    def band_edge_wave_function(self):
+        pass
+    def carriers_mass(self, temperature=298, nelect=1e-18, method='boltzman', 
+                                                            *args, **kwargs):
+        """
+        Method to get carriers masses, two methods can be used, boltzman and 
+            band_directory.
+
+        args:
+            temperature:: default 298K, for Boltzman method;
+            nelect:: carriers density for Boltzman method, default is 1e-18;
+            method:: boltzman OR band, default is 'boltzman';
+
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+
+        params['nedos'] = 3001
+        params['ismear'] = -5
+        
+        vasp.kpoints = 0.05
+        
+        if stdin is None:
+            raise IOError ("No such derectory")
+        elif 'boltzman' in method: 
+            path = join(stdin, 'carriers')
+            self.calc_properties(vasp, stdin, path, 'symmetry', **params)
+            vasp.boltzman(path, temperature, nelect)
+        elif 'band' in method: # ('underdevelopment') % 
+            pass
+
+    def project_dos(self, func, stdin, *args, **kwargs):
+        """
+        Method to get projected density of states. 
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+
+        params['nedos'] = 3001
+        params['ismear'] = 0
+        params['sigma'] = 0.08
+        
+        if stdin is None:
+            raise IOError ("No such derectory")
+        else: 
+            path = join(stdin, 'pdos')
+            self.calc_properties(vasp, stdin, path, projected=True, *args, **params)
+
+
+    def elf(self, func, stdin, *args, **kwargs):
+        """
+        Method to get ELF. 
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        vasp = deepycopy(func)
+     
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+        params['lelf'] = True
+        params['nedos'] = 3001
+        params['ismear'] = 0
+        params['sigma'] = 0.08
+        
+        if stdin is None:
+            raise IOError ("No such derectory")
+        else: 
+            path = join(stdin, 'elf')
+            self.calc_properties(vasp, stdin, path, *args, **params)
+
+
+    def hse_gap_values(self, vasp, stdin, stdout, kpoints=None, *args, **kwargs):
+        """
+        Calculated the corrected band gap values by using the two steps by 
+            default,
+            a) calculate the band edges by using PBE functionals;
+            b) calculate the band edges by using HSE functionals;
+            
+            if the band edges were set by using the args kpoints
+            the first step was skiped. For instance, 
+                kpoints = [[0., 0.5, 0.0], [0.5, 0.5, 0.5]]
+        args:
+            vasp:: object of the focused systems;
+            kpoints:: the set points of the considered band edges;
+            kwargs:: external parameters for calculation.
+
+        return None
+        """
+
+        if kpoints is None:
+            self.self_consistent_calc(vasp, stdin, stdout, functional=None)
+            kpoints = self.get_band_edges(stdout).kpoints
+            self.self_consistent_calc(vasp, stdin, stdout, 
+                                      add_kpoints=kpoints, functional='hse')
+        else:
+            self.self_consistent_calc(vasp, stdin, stdout, 
+                                      add_kpoints=kpoints, functional='hse')
+
+    # relax cell shape and atomic positions % 
+    def relax_cell_ions(self, vasp, stdin=None, stdout=None, overwrite=False,
+                        accelerate=True, steps=3, maxsteps=5, *args, **kwargs):
+
+        """
+        To relax the cell shape and ionic positions.
+
+        args:
+            vasp:: SetVasp object for the one calculation;
+            stdin:: initial direction to restart, default is None.
+            stdout:: running direction;
+            overwrite:: whether to overwrite the existed files;
+            accelerate:: whether to accelerate the calculation by using 
+                         roughly calculations;
+            steps:: maximum steps for roughly calculations;
+            maxsteps:: maximum steps for normal calculations;
+
+        """
+        from copy import deepcopy 
+        from os.path import join
+
+        count = 0 
+        if accelerate is True:
+            self.__multisteps_optimization__(vasp, count, stdout, overwrite, steps)
+            stdin = join(stdout, '0')
+
+        # normal optimization by using initial setting % 
+        path = self.__relax__(vasp, stdin, stdout, overwrite, maxsteps)
+        
+        return path 
+
+    # scf calculation % 
+    def self_consistent_calc(self, func, stdin=None, stdout=None, 
+                             add_kpoints=None, functional=None, 
+                             *args, **kwargs):        
+        """
+        To running a single point of the structure. 
+        """
+        
+        from copy import deepcopy 
+
+        vasp = deepcopy(func)  # get the copy for initial calculation % 
+        
+        if functional is not None:
+            vasp.functional = functional
+            vasp.kpoints = add_kpoints
+        
+        # basic parameters % 
+        params={}
+        params.update(kwargs)
+
+        params['icharg'] =  1
+        params['ibrion'] = -1
+        params['ismear'] = -5
+        params['isif'] = 2
+        params['nsw']  = 0
+        
+        # task options for write out WAVECAR % 
+        if any(['optics', 'band']) in vasp.task \
+                    or 'hse' in vasp.functional:
+
+            params['lwave'] = True
+        else:
+            params['lwave'] = False 
+
+        
+        # set vasp input files % 
+        func.setvasp_input(vasp.structure, stdin, stdout, *args, **params)
+
+        # run vasp program % 
+        vasp.run_vasp(stdout)
+   
+    # nonself-consistent calculation % 
+    def calc_properties(self, func, stdin, stdout=None, overwrite=False, 
+                              projected=False, *args, **kwargs):
+
+        from copy import deepcopy 
+        from os import path
+        
+        vasp = deepcopy(func)
+        
+        params={}
+        params.update(kwargs)
+
+        params['icharg'] = 11
+        params['istart'] = 1
+        params['ibrion'] = -1
+        params['isif'] = 2
+        params['nsw']  = 0
+        params['nelm']  = 100
+
+        if projected is True: params['lorbit'] = 11
+        
+        # compute the properties % 
+        vasp.setvasp_input(func.structure, stdin, stdout, overwrite, **params)
+        vasp.run_vasp(stdout)
+        
+
+    # relax cells shape and atomic positions % 
+    def __relax__(self, func, stdin=None, stdout=None, overwrite=False,
+                                         maxsteps=10, *args, **kwargs):
+
+        from copy import deepcopy 
+        from os import path 
+
+        # restart calculation from input % 
+        if stdin is not None:
+            count = int(path.basename(stdin))
+            if vasp.is_converaged(stdin):
+                func.structure = read(path.join(stdin, 'CONTCAR'))
+        else:
+            count = 0
+        
+        # running path % 
+        path = path.join(stdout, str(count))
+        
+        # loop relaxation % 
+        if count < maxsteps and not coveraged:
+            loop = True
+        else:
+            loop = False
+        while loop:
+            func.setvasp_input(func, stdin, stdout=path) # vasp input % 
+            func.run_vasp(path) # running vasp program % 
+            self.__relax__(vasp, stdin, path, overwrite, maxsteps) 
+        
+        return path 
+
+    # multi-steps roughly calculation %  
+    def __multisteps_optimization__(self, func, count, stdout, overwrite, 
+                                          steps=3, *args, **kwargs):
+        """
+        Aming the roughly optimize the structure by using low density 
+        of kpoints mesh.
+
+        Args:
+            count:: the real running loop steps;
+            stdout:: the running path;
+            overwrite:: whether to overwrite the exsited data;
+            steps:: the maximum steps to roughly optimize structure;
+
+        return True or False
+        """
+        from copy import deepcopy  
+        import os
+        
+        vasp = deepcopy(func)
+        
+        # external parameters % 
+        params = {}
+        params['ediff'] = 1e-5
+        if vasp.__hasattr__('force'):
+            params['ediffg'] = -0.5 + vasp.force/steps*count
+
+        path = os.path.join(stdout, '0')
+        if not os.path.exists(path):
+            os.makedirs(path)
+        elif is_converaged(path):
+            vasp.structure = read(path+'/CONTCAR')
+        
+        # loop the rough calculation (Just for VASP5.0 or latter) %
+        if count < steps:
+            loop = True
+        else:
+            loop = False
+
+        while loop:
+            count += 1 
+            if type(vasp.kpoints) is float:
+                params['kspacing'] = 0.8 - vasp.kpoints/steps*count
+                if 0.8 - vasp.kpoints < 0.1:
+                    steps = 1
+            if type(vasp.kpoints) is str:
+                params['kspacing'] = 0.8 - 0.8/steps*count
+
+            func.setvasp_input(func.structure, stdin, stdout, *args, **params)
+            vasp.run_vasp(path)
+
+            if vasp.is_converaged(path): # converaged to update the structure % 
+                vasp.structure = read(join(path, 'CONTCAR'))
+
+            self.__multisteps_optimization__(vasp, count, stdout, overwrite, steps)
+
+
+    
+class RelaxWorkflow(object):
+
+    def __init__(self, func, stdin=None, stdout=None, restart=False, steps=3, *args, **kwargs):
+
+        self.functional = func
+
+        # whether to retart the task % 
+        if restart is True:
+            
+            # restart the task from the lastest running direction % 
+            if stdout is not None:
+                if self.functional.converaged(stdout): 
+                    self.functional['structure'] = read(stdout)
+                if stdin is not None:
+                    stdin = None
+
+            # restart the task from the former running direction % 
+            elif stdin is not None:
+                if self.functional.converaged(stdin):
+                    self.functional['structure'] = read(stdin)
+            else:
+                restart = False
+
+        # update the control parameters for calculation % 
+        self.functional['parameters'].update(**kwargs) 
+        
+        # loop relaxation % 
+        self.__relax_flow__(stdin, stdout, restart, steps)
+            
+
+
+    def __relax_flow__(self, stdin, stdout, restart, steps):
+        
+        import os  
+        
+        if stdin is None:
+            lp= 0
+        else:
+            if int(os.path.basename(stdin)) < steps:
+                lp = int(os.path.basename(stdin)) + 1
+
+        if lp > 0: restart=True
+        path = os.path.join(stdout, str(lp)) 
+        self.functional.set_input(stdin, stdout)
+        self.functional.calculator(stdout)
+        converaged = self.functional.converaged(stdout)
+        # whether the tasks is done or not % 
+        # multisteps calculation % 
+        endloop = True 
+        while endloop and (not converaged) and ( lp < steps):
+            endloop = self.relax(path, outdir, steps, restart, **kwargs)
+            
+        return False
+
+
+
+class VaspCalculator(object):
+
+    from jump2.utils.io import is_exist 
+
+    def calculator(self, path, structure, submit=False,**kwargs):
+
+        
+        import os 
+        # run order % 
+        self.structure = structure 
+        default_task_order=('optimize', 'scf', 'nonscf')
+        
+        task = self.task
+
+        # ordered relaxation loop %
+        # optimization % 
+        if 'optimize' in task:
+            stdout = os.path.join(path, 'relax_cell_ions')
+            if submit is True:
+                self.relax(None, stdout, max_steps=3, restart=False, **self.task['optimize']['param'])
+            else:
+                self.setvasp_input(self.structure, stdout)
+        # scf % 
+        if 'scf' in task:
+            stdout = os.path.join(path, 'relax_electrons')
+            if submit is True:
+                self.relax(None, stdout, max_steps=3, restart=False, **self.task['scf']['param'])
+            else:
+                self.setvasp_input(self.structure, stdout)
+        # nonscf % 
+        if 'nonscf' in task:
+            stdout = os.path.join(path, 'calc_properties')
+            for f in task['nonscf']:
+                stdout = os.path.join(stdout, f)
+                if submit is True:
+                    self.relax(None, stdout, max_steps=0, restart=False, **self.task['nonscf']['param'])
+                else:
+                    self.setvasp_input(self.structure, stdout)
+
+       ## default steps % 
+       #steps = 3
+       ## ordered relaxation loop %
+       #for t in default_task_order:
+       #    if t in self.task:
+       #        stdout = os.path.join(path, t)
+       #        if type(self.task[t]) is list:
+       #            for f in self.task[t]:
+       #                stdout = os.path.join(stdout, f)
+       #                if not sumbit: steps  = 0
+       #                self.relax(None, stdout, max_steps=steps, restart=False, sumbit=submit, **self.task[t]['param'])
+       #        else:
+       #              self.relax(None, stdout, max_steps=steps, restart=False, submit=submit, **self.task[t]['param'])
+    # aming to relax structure and do scf/nonscf calulations % 
+    def relax(self, indir, outdir, max_steps=3, restart=False, **kwargs):
+        
+        import os  
+        
+        if indir is None:
+            count_step = 0
+        else:
+            if int(os.path.basename(indir)) <  max_steps:
+                count_step = int(os.path.basename(indir)) + 1
+            else:
+                return False 
+
+        if count_step > 0: restart=True
+        path = os.path.join(outdir, str(count_step)) 
+        #update parameters % 
+        self.setvasp_input(self.structure, path, indir, restart, **kwargs)
+
+        #output input files % 
+        #self.vasp_output(path)
+        #os.chdir(path)
+        try: 
+            self.run_program(path)
+        except:
+            pass
+
+        # whether the tasks is done or not % 
+        isconvg = self.run_status(path)
+        # multisteps calculation % 
+        outloop = True 
+        while outloop and (not isconvg) and (count_step < max_steps):
+            outloop = self.relax(path, outdir, 3, restart, **kwargs)
+            
+        return False
+
+
+    def restart_calc(self, stdout, stdin=None, restart=False, 
+                     overwrite=False, *args, **kwargs):
+        
+        if stdin is not None:
+            if stdout != stdin:
+                self.__copy_files__(stdin, stdout, *args, **kwargs)
+
+

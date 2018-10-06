@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/home/xgzhao/.jump2/bin/jump2", line 18, in <module>
+    run_jump2()
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/utils/control.py", line 252, in run_jump2
+    ParseProcess(options) 
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/parse/parse_process.py", line 73, in __init__
+    self.__class_options__()
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/parse/parse_process.py", line 98, in __class_options__
+    self.launch(self.parses)
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/utils/control.py", line 93, in launch
+    self.__launch_interactive__(args[0]['single'])
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/utils/control.py", line 130, in __launch_interactive__
+    func.calculator(func, stdout)
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/functional/vasp/setvasp.py", line 392, in calculator
+    VaspWorkflows(vasp)
+  File "/home/xgzhao/.local/lib/python2.7/site-packages/jump2-V1.0-py2.7.egg/jump2/functional/vasp/workflows.py", line 75, in __init__
+    from os.path import join, exists, remove, abspath
+ImportError: cannot import name remove

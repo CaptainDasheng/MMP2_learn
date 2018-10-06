@@ -1,0 +1,53 @@
+ =============================================================================
+ + JUMP2 (Jilin University Materials-design Python Package) is a free        +     
+ +   platform for orgnize the high throughput calculation and postprocess    +
+ +   packages based on first principles programs, such as VASP, Abinit, QE   +  
+ +   Gaussian etc. (Abinit, QE(pwscf, Gaussian under developed))             +                                     
+ +  Please report bugs to lijun_zhang@jlu.edu.cn/xgzhao11@mails.jlu.edu.cn   +
+ +                                                                           +
+ +  (C)opyright belongs to lijun Zhang's group in Jilin University, China.   +
+ =============================================================================
+
+1. download from:
+
+    1) https://
+    2) git clone https://
+    3) send email to: lijun_zhang@jlu.edu.cn
+
+2. install jump2:
+
+  (I) need dependencies:
+      a) python (2.7-2.8)
+      b) numpy 
+      c) dijgo
+      d) scipy 
+      e) compiled VASP/Abinit/Gaussian/PWscf
+      f) MySQL
+      g) spglib
+
+  (II) optional dependencies:
+    	a) ipython 
+
+  (III) steps to install:
+
+       a) unzip jump2-master.zip
+       b) cd jump2-master direction
+       c) edited the setup.cfg 
+       d) run 'python setup.py build'
+       e) run 'python setup.py install --user'
+
+3. usage:
+
+4. introduction for folders:
+
+   a) bin/
+      include the main progress script;
+
+   b) src/
+      modules of jump2;
+
+   c) example/
+      example for high throughput calculation;
+   
+   d) scripts/
+      basic example for carrying out high throughput calculations;

@@ -1,0 +1,17 @@
+#input the content A, B and C
+Content A: Si
+Content B: Ge
+Content C: Sn
+Content D: Ag
+
+#Figure name
+Figure name: Convex Hull
+
+#Known compounds:
+SiGe
+GeSn
+SiAg
+SnAg
+GeAg
+SiSn
+SnAgSiGe

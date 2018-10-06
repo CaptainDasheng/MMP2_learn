@@ -1,0 +1,554 @@
+#!/usr/bin/env python 
+
+#from utils import io
+#from ...ptable import table 
+from ...utils.io import * 
+from plus_u import default_plusU
+import re, os 
+from setvdw import SetVdw
+from setpotcar import SetPotcar 
+from format_incar import * 
+from ..compute import Compute
+from workflows import VaspCalculator
+class SetVasp(Compute, VaspCalculator):
+    """
+    cls:: Prepare the input data for a single calculation via VASP by
+          using the default task and customized parameters.
+          
+          Supporting tasks:
+          1) optimize: optimize the cell by relaxing the cell shape/volume,
+             one can detailed set the optimization by add more keywords,
+             for instance,
+              ions :: refers to ISIF = 2;
+              shape ions volume :: refers to ISIF = 3;
+              shape ions  :: refers to ISIF = 4;
+              volume ions :: refers to ISIF = 5;
+              shape volume :: refers to ISIF = 6;
+              volume :: refers to ISIF = 7;
+         
+    tributes:
+
+        task:: the basic tasks to do, you can chose shape/volume/ions/property
+               or the combination of them.
+        vdw :: Van der Waals(vdw) functional to select, supporting:
+               optB86b-vdw, optB88-vdw, D2, DF2, PBE etc. Among them, only D2
+               depends on the specices. You can also set the DIY vdw by add the 
+               params in a dict.
+        kpoints:: kmesh for crystal calculation for VASP.
+                Set the KSPACING or KPOINTS.
+                You can use two modes, for instance,
+                self.kpoints = 0.25 for setting kspacing = 0.25;
+                or 
+                self.kpoints = 'test\n0\nG\n6 6 6\n0 0 0', other
+                modes,
+                    Gamma
+                    Cartesian
+                    Monkhorst
+                    Line
+                can also be used.
+        plusU:: for considering the hubbardU. set format:
+                element = [U, J, orbital], for example, [4, 0, 'd']
+               
+          2) band: calculating the band structure;
+          
+          3) dos: caculating the dos;
+
+          4) optics: calculating the dielectic matrix with frequencies;
+
+          5) epsilon: calculating the static dielectric constants;
+
+          6) carriers: carriers masses (under develop);
+
+          7) dynamic: calculating the dynamic by first pricinple,(under developed)
+              dynamic_nvt: 
+              dynamic_nve:
+              dynamic_npt: 
+    """
+    
+    def __init__(self):
+
+        super(SetVasp, self).__init__()
+        self.functional = None
+        self.outdir = None
+        self.structure = None
+        self.energy = 1e-4
+        self.force = 1e-2
+        self.__tasks__ = None
+        self.__kpoints__ = None
+        self.__vdw__ = None
+
+    #set tasks %
+    @property
+    def task(self):
+        return self.__tasks__
+    
+    #set vdw functional %
+    @property
+    def vdw(self):
+            return self.__vdw__
+
+    #tribute of kpoints  
+    @property
+    def kpoints(self):
+        return self.__kpoints__
+    
+    # plus U % 
+    def plusU(self, *args, **kwargs):
+
+        if self.__hasattr__('ldau'):
+           self.pop('ldau') 
+
+        if 'default' in args: 
+            self.__setattr__('plusu', 'default')
+        elif kwargs: 
+            self.__setattr__('plusu', kwargs)
+
+    def __hasattr__(self, value):
+    
+        try:
+            self.__getattribute__('value')
+        except:
+            return False
+        return True 
+
+    # set hubbardU % 
+    def set_hubbardU(self, elements=None):
+
+        hubbardu = {}              # initialize hubbardU %
+        hubbardu['ldau'] = True    # set True for calcualtion %
+        orbitalU=['s','p','d','f'] # oribtals for considered %
+        if self.__hasattr__('plusu'):
+            plusU = self.plusu         # DIY parameters % 
+        else:
+            return None
+        
+        # case for default hubbardU %
+        if plusU == 'default':
+            hubbardu.update(default_plusU(elements))
+            return hubbardu
+        # case for DIY hubbardU % 
+        else:
+            U = []
+            J = []
+            types = []
+            for e in elements:
+                if e in plusU:
+                    U.append(plusU[e][0])
+                    J.append(plusU[e][1])
+                    types.append(orbitalU.index(plusU[e][2]))
+                else:
+                    U.append(0)
+                    J.append(0)
+                    types.append(2)
+                    
+            hubbardu['ldauu'] = ' '.join(U)
+            hubbardu['ldauj'] = ' '.join(J)
+            hubbardu['ldautype'] = ' '.join(types)
+            
+            return hubbardu
+    
+#=====================================================================
+# need to construct a imaginary class method  % 
+#   def setup(self, cluster=None, submit=False):
+
+#       # update incar % 
+#       self.set_params()
+#       
+#       # output files for calulcation % 
+#       
+#       #self.vasp_output()
+#       if submit is True:
+#           for motion in ['optimize', 'scf', 'nonscf']:
+#               if len(self.task['motion']) > 0: 
+#                   self.vasp_output(self.outdir+'/'+motion)
+#       else:
+#           self.vasp_output(self.outdir+'/'+'optimize')
+#           self.create_scripts(self.outdir, cluster)
+
+#   def create_scripts(self, path, cluster):
+
+#       pbs = get_manager(path, cluster)
+#       with open(path+'/task.pbs', 'wb') as f:
+
+#           f.write(pbs)
+
+    def set_params(self, indir, stdout, restart=False, **kwargs):
+        from ...structure.structure import Structure
+        
+        structure = Structure()
+        if restart:
+            # if cacluation success% 
+            try:
+                os.system('cp {0}/* {1}/'.format(indir, stdout))
+                os.system('cp {0}/CONTCAR {0}/POSCAR'.format(stdout))
+            finally:
+                pass
+        else:
+            structure.read(self.structure, type='poscar')
+            elements = structure.get_elements()  # get species in the structure %
+            #elements = self.structure.elements  # get species in the structure %
+            potcar = SetPotcar()
+            self.potcar = potcar.setpotcar(elements)    # get the potcar % 
+           
+            if self.vdw is not None:
+            #if self.__hasattr__('vdw'):
+                vdw = SetVdw(self.vdw, elements).vdw # get the vdw % 
+            incar = default_incar  # basic INCAR parameters % 
+            incar['ediff'] = self.energy # updated energy thread % 
+            kpoints = self.kpoints  # kmesh %
+
+            # update force thread only for optimization % 
+            if len(self.task['optimize']) > 0:
+                incar['ediffg'] = self.force*-1.0
+            elif 'ediffg' in incar:
+                incar.pop('ediffg')
+            
+            #update the hubbardU value % 
+            if self.__hasattr__('plusu'):
+                hubbardu=self.set_harbbardU(elements)
+                incar.update(hubbardu) 
+            
+            self.wrt_kpoints = True
+            self.wrt_kernel = False
+            if incar['encut'] < max(self.potcar['enmax']):
+                
+                #multi-times of ENMAX from the  POTCAR %
+                if incar['encut'] >= 1.0 and incar['encut'] < 10:
+                     incar['encut'] = incar['encut']*max(self.potcar['enmax'])
+                
+                # default setting is the 1.3 times ENMAX % 
+                else:
+                     incar['encut'] = incar['encut']*1.0
+                # update the parameters % 
+                incar.update(kwargs)
+
+            self.incar = incar # INCAR % 
+
+            if isinstance(kpoints, float):
+
+                self.incar['kspacing'] = kpoints 
+                self.wrt_kpoints = False
+
+            # is/not add the vdw functionals % 
+            if self.vdw is not None:
+            #if self.__hasattr__('vdw'):
+                self.incar.update(vdw['param'])
+                # is/not ouptut the vdw_kernel.bindat %
+                if vdw['type'] != 'D2':
+                    self.wrt_kernel = True
+                else:
+                    self.wrt_kernel = False
+
+
+
+    #output the vasp input files %
+    def vasp_output(self, path, overwrite=True):
+        
+        #path = self.outdir
+        if overwrite is True:
+            
+            if is_exist(path):
+                if isdone(path):
+                    print '{0} is done'.format(path)
+            else:
+                os.makedirs(path)
+                
+                poscar = self.structure
+                #poscar = self.structure.structure
+                potcar = self.potcar
+                kpoints = self.kpoints
+                incar = self.incar 
+
+                vaspio.write_incar(incar, path)
+                vaspio.write_poscar(poscar, path)
+                vaspio.write_potcar(potcar, path)
+
+                if self.wrt_kernel:
+                    vaspio.write_kernel(path)
+
+                if self.wrt_kpoints:
+                    vaspio.write_kpoints(kpoints, path)
+
+        #elif self.restart is True and self.olddir is True:
+        elif self.olddir is True:
+
+            for f in ['CONTCAR', 'CHGCAR', 'WAVECAR', 'vdw_kernel.bindat']:
+                olddir = self.olddir
+                objdir = self.outdir
+                if is_exist(olddir + '/' + f):
+                    
+                    shutil.copy(olddir+'/'+f, objdir)
+            
+            vaspio.write_incar(path, incar)
+
+            if self.wrt_kpoints is True:
+                vaspio.write_kpoints(path, kpoints)
+
+        with open(path+'/.wait', 'wb') as f:
+            
+            f.write('wait')
+            f.close()
+
+    def run_status(self, path, task_type='scf'):
+
+        isscf_convg = False
+        isopt_convg = False
+        dlabel='General timing and accounting informations for this job:'
+        slabel='aborting loop because EDIFF is reached'
+        olabel=' reached required accuracy '
+      
+        if os.path.exists(path+'/OUTCAR'):
+            is_finished = os.popen("grep '{0}' {1}/OUTCAR".format(dlabel, path)).readline()
+
+            if is_finished == '':
+                with open(path+'/.done', 'wb') as f:
+                    f.write('')
+            else:
+                with open(path+'/.error', 'wb') as f:
+                    f.write(path)
+                return 'error'
+               
+            if task_type in ['scf', 'nonscf']:
+                convg = os.popen('grep "{0}" {1}/OUTCAR'.format(slabel, path)).readline()
+                if convg == '': isscf_convg = True 
+
+            if task_type == 'optimize':
+                convg = os.popen('grep "{0}" {1}/OUTCAR'.format(olabel, path)).readline()
+                if convg == '': isopt_convg = True 
+
+        if isscf_convg or isopt_convg:
+            return True
+
+        else:
+            return False
+
+
+    @task.setter
+    def task(self, value):
+        if value is None:
+            value = 'scf'
+        self.__tasks__ = self.__process__(value)
+
+    @task.deleter
+    def task(self):
+        self.__tasks__ = None
+
+    @kpoints.setter
+    def kpoints(self, strings=None):
+        
+        if strings is None:
+            #set fot default kpoints %
+            self.__kpoints__ = '\n0\nAuto\n15\n'
+
+        else:
+            # for KSPACING setting % 
+            if isinstance(strings, float):
+                if strings > 0. and strings < 1.0:
+                    self.__kpoints__ = strings
+                else:
+                    self.__kpoints__ = 0.25
+
+            # for KPOINTS setting % 
+            if isinstance(strings, str):
+
+                #for Gamma or Monk % 
+                if list(strings.split('\n')[2])[0].upper() == 'G' or \
+                   list(strings.split('\n')[2])[0].upper() == 'M':
+                    if len(strings.rstrip().split('\n')) == 5:
+                        self.__kpoints__ = strings.rstrip()
+                
+                #for Auto % 
+                elif list(strings.split('\n')[2])[0].upper() == 'A':
+                    if len(strings.rstrip().split('\n')) == 4:
+                        self.__kpoints__ = strings.rstrip()
+                 
+                # for Caterian or K % 
+                elif list(strings.split('\n')[2])[0].upper() == 'C' or \
+                     list(strings.split('\n')[2])[0].upper() == 'K':
+                    if  len(strings.rstrip().split('\n')) == 7:
+                        self.__kpoints__ = strings.rstrip()
+                
+                # for Line % 
+                elif list(strings.split('\n')[2])[0].upper() == 'L' and \
+                     list(strings.split('\n')[3])[0].upper() == 'R':
+                    self.__kpoints__ = strings.rstrip()
+                
+                #invalid setting % 
+                else:
+                    raise IOError\
+                    ("type_kpoints {0} are unknown".format(strings))
+   
+    @kpoints.deleter
+    def kpoints(self):
+        self.__kpoints__ = None
+
+    @vdw.setter
+    def vdw(self, vdwfunc):
+        #def vdw(self, vdwfunc=None, *args):
+        #under developed, DIY vdw functional should be considered % 
+        if isinstance(vdwfunc, str):
+            vdwfunc = vdwfunc.lower()
+            if 'd2' in vdwfunc:
+                self.__vdw__ = 'd2'
+            elif 'b86' in vdwfunc:
+                self.__vdw__ = 'b86'
+            elif 'b88' in vdwfunc:
+                self.__vdw__ = 'b88'
+            elif 'df2' in vdwfunc:
+                self.__vdw__ = 'df2'
+            else:
+                raise NoFoundError\
+            ('{0} vdw functional was not found'.format(str))
+    
+    # organize the input tasks % 
+    def __process__(self, tasks):
+        """method:: orginize the tasks according to the input."""
+
+        basic_tasks = {}
+        functionals = self.functional
+
+        basic_tasks['optimize'] = []
+        basic_tasks['scf'] = ['scf']
+        basic_tasks['nonscf'] = []
+
+        # case default is paw_pbe %
+        if functionals is None:
+            basic_tasks['func'] = 'paw_pbe'
+        else:
+            if isinstance(functionals, str):
+                functionals = functionals.lower()
+            else:
+                raise NoFoundError\
+                    ('unrecognized functional {0}'.format(str(functional)))
+            # case HSE % 
+            if 'hse' in functionals:
+                basic_tasks['func'] = 'hse'
+            # case MBJ %
+            elif 'mbj' in functionals:
+                basic_tasks['func'] = 'mbj'
+            # case gw0 %
+            elif 'gw' in functionals:
+                basic_tasks['func'] = 'gw'
+            # case pbesol %
+            elif 'pbesol' in functionals:
+                basic_tasks['func'] = 'pbesol'
+            # case pbe0 %
+            elif 'pbe0' in functionals:
+                basic_tasks['func'] = 'pbe0'
+            # case soc % 
+            if 'soc' in functionals: 
+                basic_tasks['func'] += ' with soc'
+        # set for default tasks % 
+        if tasks is None: 
+            return basic_tasks
+        
+        else:
+            if isinstance(tasks, str):
+                tasks = tasks.lower()
+        # for optimize calculation % 
+        if 'volume' or 'shape' or 'ions' in tasks:
+            # case IBRION = 3 %
+            if 'volume' and 'shape' and 'ions' in tasks:
+                basic_tasks['optimize'].append(3)
+            # case IBRION = 4 %
+            elif 'volume' and 'ions':
+                basic_tasks['optimize'].append(4)
+            # case IBRION = 5 %
+            elif 'shape' and 'ions':
+                basic_tasks['optimize'].append(5)
+            # case IBRION = 6 %
+            elif 'shape' and 'volume':
+                basic_tasks['optimize'].append(6)
+            # case IBRION = 7 %
+            elif 'volume' in tasks:
+                basic_tasks['optimize'].append(7)
+            # case IBRION = 2 %
+            elif 'ions' in tasks:
+                basic_tasks['optimize'].append(2)
+        # property band % 
+        if 'band' in tasks:
+            basic_tasks['nonscf'].append('band')
+        # property dos % 
+        if 'dos' in tasks:
+            basic_tasks['nonscf'].append('dos')
+        # property optic % 
+        if 'optic' in tasks:
+            basic_tasks['nonscf'].append('optics')
+        # property carrier % 
+        if 'carrier' in tasks:
+            basic_tasks['nonscf'].append('carriers')
+
+        #self.detailed_params()
+        
+        return self.detailed_params(basic_tasks) 
+
+    def detailed_params(self, task):
+	t={}
+        if task['optimize'] != []:
+            if 2 in task['optimize']: 
+                t['type'] = 'ions'
+                t['param']  = {'isif':2, 'ibrion':1} 
+
+            if 3 in task['optimize']: 
+                t['type'] = 'full_relax'
+                t['param']  =  {'isif':3,'ibrion':1}
+
+            if 4 in task['optimize']: 
+                t['type'] = 'fix_shape'
+                t['param']  = {'isif':4,'ibrion':1}
+
+            if 5 in task['optimize']: 
+                t['type'] = 'fix_volume'
+                t['param']  = {'isif':5,'ibrion':1}
+
+            if 6 in task['optimize']: 
+                t['type'] = 'fix_ions'
+                t['param']  = {'isif':6,'ibrion':1}
+
+            if 7 in task['optimize']: 
+                t['type'] = 'fix_shape_ions'
+                t['param']  = {'isif':7,'ibrion':1}
+
+            task['optimize'] = t
+
+        if 'scf' in    task['scf']:
+            task['scf']={'type':'scf', 'param':{'ibrion':-1, 'icharg':1,'isif':2}}  
+        if task['nonscf'] !=[]:
+            tmpnonscf ={}
+            if 'band' in task['nonscf']:
+                tmpnonscf['band'] = {'type':'band', 'param':{'ibrion':-1, 'icharg':11,'isif':2, 'nband':200}} 
+            if 'dos' in task['nonscf']:
+                tmpnonscf['optics'] = {'type':'optics', 'param':{'ibrion':-1, 'icharg':11,'isif':2, 'nedos':3001}} 
+            if 'optic' in task['nonscf']:
+                tmpnonscf['dos'] = {'type':'dos', 'param':{'ibrion':-1, 'icharg':11,'isif':2, 'nedos':3001}} 
+            if 'carrier' in task['nonscf']:
+                tmpnonscf['dos'] = {'type':'dos', 'param':{'ibrion':-1, 'icharg':11,'isif':2, 'nedos':3001}} 
+
+            task['nonscf'] = tmpnonscf       
+
+        return task
+            
+    # setting the magmomsim % 
+    def magmom(self, *args, **kwargs):
+        """
+        need updated
+        """
+        if args is not None:
+            
+            self.mag['MAGMOM'] = ' '.join(args)
+
+        return 
+
+    def collect_magmom(self):
+        if kwargs is not None:
+            mag = []   
+
+            for e in self.elements:
+                if e in kwargs:
+                    mag.append(kwargs[e])
+                else:
+                    mag.append(0)
+
+            self.mag['MAGMOM'] = ' '.join(mag)
+
+        return 

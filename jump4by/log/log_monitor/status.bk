@@ -1,0 +1,222 @@
+#!/usr/bin/env python 
+
+from utils.io import * 
+class CheckStatus(object):
+
+    def __init__(self, tasks=None, *args, **kwargs):
+
+
+        self.all_pools = None
+
+        #check the number and name of tasks under user direction %
+        self.all_pools = self.get_all_pools()
+
+        if self.all_pools is None:
+            print """No running or waiting tasks under this user,
+                    please use 'jump2 --r input.py'  to contruct
+                    the input files for new tasks.
+                  """     
+        else:
+            #check the tasks under current direction %
+            if tasks is None and self.all_pools: 
+                tasks = self.iscurrent_pool()
+            
+            if tasks is not None:
+                
+                self.check_pool(tasks, args, kwargs)
+
+            # check the pools directtion %
+            else:
+                self.check_pool('all', args, kwargs)
+            
+        
+    # check the all/current tasks according to the pools %
+    def check_pool(self, tasks, *args, **kwargs):
+
+        if tasks is None: tasks = 'all'
+
+        if isinstance(tasks, str):
+            # default check % 
+            if tasks == 'all':
+            
+                self.check_all_tasks_status()
+            
+            else:
+
+                self.check_single_task_status(tasks, args, kwargs)
+
+        if isinstance(tasks, list):
+
+            for pool in tasks:
+                
+                self.check_single_task_status(pool, args, kwargs)
+
+    # check single tasks %
+    def check_single_task_status(self, pool, *args, **kwargs):
+
+        all_status = ['done', 'running', 'wait', 'error']
+
+        if 'status' in kwargs:
+
+            all_status = kwargs['status']
+        
+        spl = self.all_pools[pool.split('.')[0]]
+
+        status = self.collect_status(spl, all_status)
+        
+        print "----------------------------------------"
+        print "%tasks pool%:", pool
+        
+        self.show_status(status)
+            
+    #check all tasks status in this user %
+    def check_all_tasks_status(self):
+
+        for p in self.all_pools:
+
+            self.check_single_task_status(p)
+        
+    
+    #collect the status in the jobs pool %
+    def collect_status(self, pool, status):
+
+        import cPickle as pickle
+       
+        nstatus = {}
+        for k in status: nstatus[k] = 0
+
+        nstatus['name'] = pool['name']
+        nstatus['path'] = pool['path']
+   
+        job_status = load_pool(nstatus['path'], nstatus['name'])
+      
+        for j in job_status['tasks']:
+            if job_status['tasks'][j]['status'] in status:
+                
+                nstatus[job_status['tasks'][j]['status']] += 1
+        
+        return nstatus
+
+    #show the check status %
+    def show_status(self, status):
+
+        all_status = ['done', 'running', 'wait', 'error']
+
+        for k in all_status:
+
+            if k in status:
+
+                print 
+                print "                  \
+                %% {0} %% tasks:: {1}".format(k.upper(), status[k])
+
+    # check the pools at current paths %
+    def iscurrent_pool(self):
+
+        import os 
+
+        current_pool = []
+
+        plfiles = os.walk('.').next()[2]
+       
+        for p in plfiles:
+            # judge current pool is under running %
+            if p.endswith('.pool') and p.split('.')[0] in self.all_pools: 
+                
+                current_pool.append(p)
+
+        if current_pool is not None:
+            
+            print 
+            is2select = raw_input("whether you want to check ONE task? (n/y)")
+            print 
+            if 'y' in is2select.lower():
+                
+                current_pool = self.select_pool2check(current_pool)
+
+        # return the result %
+        if current_pool is None:
+
+            return None
+
+        else:
+            return current_pool
+
+    #select the given pool to  check%  
+    def select_pool2check(self, current):
+
+        n = 0
+        select_pool = None
+
+        print 
+        print "Please select the current pool you want to check, default is all." 
+        for p in current:
+            print "[{0}] : {1}".format(str(n), p.split('.')[0])
+            n += 1
+        
+        pool = input()
+        
+        while (not isinstance(pool, int) or pool >= len(current)):
+            
+            if pool >= len(current):
+                print "invalid the index, please input again...."
+                pool = input()
+        
+        select_pool = current[pool]
+      # if isinstance(pool, int) and pool < len(current):
+      #     select_pool = current[pool]
+
+        # elif isinstance(pool, str) and pool+'.pool' in current:
+      #     select_pool = pool
+
+        # else:
+      #     print "Invalid input, all the tasks under current direction will be check."
+      #     select_pool = current
+       #if isinstance(pool, str) and pool in current:
+       #    
+       #    select_pool = pool
+       #
+       #else:
+       #    print "Invalid input, all the tasks under current direction will be check."
+       #    select_pool = current 
+
+        return select_pool 
+
+
+    # check all the pool %
+    def get_all_pools(self):
+
+        """
+        method:: get all the pool under this user.
+        """
+        import re, os 
+        from re import split 
+
+        pools = {}  #  dict to store the pools  % 
+
+        home_path = os.environ['HOME']
+        default_pool_path = '.local/jump2/pool/'
+        path = os.path.join(home_path, default_pool_path)
+     
+        if not is_exist(path): return None 
+        # iteritems all the files %
+        for d in os.walk(path).next()[2]:
+
+            pool = {}
+
+            file_dir = os.path.join(path, d)
+            #obtained the contains of file %
+            with open(file_dir) as f:
+
+                for line in f.readlines():
+                    if len(line.split()) == 0: continue
+                    pool[line.split(':')[0].strip()] = line.split(':')[1].strip()
+                f.close()
+
+            pools[d] = pool
+     
+        if len(pools) == 0:
+            return None
+
+        else:
+            return pools 

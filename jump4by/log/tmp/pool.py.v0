@@ -1,0 +1,220 @@
+#=================================================================
+# This file is part of JUMP2.
+#
+# Copyright (C) 2017 Jilin University
+#
+#  Jump2 is a platform for high throughput calculation. It aims to 
+#  make simple to organize and run large numbers of tasks on the 
+#  superclusters and post-process the calculated results.
+#  
+#  Jump2 is a useful packages integrated the interfaces for ab initio 
+#  programs, such as, VASP, Guassian, QE, Abinit and 
+#  comprehensive workflows for automatically calculating by using 
+#  simple parameters. Lots of methods to organize the structures 
+#  for high throughput calculation are provided, such as alloy,
+#  heterostructures, etc.The large number of data are appended in
+#  the MySQL databases for further analysis by using machine 
+#  learning.
+#
+#  Jump2 is free software. You can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published 
+#  by the Free sofware Foundation, either version 3 of the License,
+#  or (at your option) and later version.
+# 
+#  You should have recieved a copy of the GNU General Pulbic Lincense
+#  along with Jump2. If not, see <https://www.gnu.org/licenses/>.
+#=================================================================
+__contributor__ = 'xingang zhao'
+
+import re, os 
+from re import split 
+import cPickle as pickle
+from utils.io import * 
+
+
+class Pool(object):
+
+    """
+    Pool is a interface for organizing the input data according to
+        the program and structural factory, and output a name.pool
+        file including all the info (OBJECTS) for calculations.
+
+    tributes::
+        functional: the main task to do;
+        structure: the structure object; 
+
+    functionals:
+
+        save_pool: save the pool contained all the information
+                    as you set;
+
+        get_current_pools: obtain the current pool if exists;
+        load_pool: get the detailed information in pool file;
+        iter_pool: do loop the pool for different operation;
+        check_pool: check the all pool status;
+        update_pool: update pool according to the status;
+
+    """
+    def __init__(self, *args, **kwargs):
+
+        self.pool = None
+        self.__structure__ = None
+
+    #   # where a pool file exist % 
+    #   if is_exist(self.name):
+    #       self.pool = load_pool(os.getcwd(),name)
+
+    #   # create new pool % 
+    #   else:
+    #       self.pool = {}
+    #       self.pool['tasks'] = {}
+    #   
+    #       self.root_path = os.getcwd().split('/')[-1]
+    #       self.functional = None
+
+    #   if 'folder' not in self.pool: 
+    #       self.pool['folder'] = self.root_path
+
+    #   self.all_pools = get_all_pools()
+
+    @property 
+    def structure(self):
+        """
+        tribute to store the object of Structure.
+        """
+        return self.__structure__
+
+    @structure.setter
+    def structure(self, value):
+        #if isinstance(value, tuple):
+        #    self.__structure__ = value
+        self.__structure__ = value
+   
+    @structure.deleter
+    def strcuture(self):
+        
+        def self.__structure__
+
+    # get the path to calculate the tasks % 
+    def __div__(self, value):
+        
+        # built in method to classify the input tasks.
+        # 'functional' key for a object of program and parameters;
+        # 'prior' key for the prior of the tasks;
+        # 'status' key for the status of tasks;
+        # 'strcuture' key for the structures;
+
+        if isinstance(value, str):
+            path = value.strip()
+            
+            self.pool['functional'] = self.functional 
+            self.pool['tasks'][path] = {}
+            self.pool['tasks'][path]['prior'] = 1
+            self.pool['tasks'][path]['status'] = 'wait'
+            self.pool['tasks'][path]['structure'] = self.structure
+
+    def save_pool(self, pool_name=None, overwrite=True, *args):
+        """
+        Method aims to store input information in a binary file.
+
+        args:
+            pool_name:: string, name of output file;
+            overwrite:: bool, overwrite the file or not;
+        
+        """
+
+        if overwrite is True:
+            pickle.dump((self.pool), open(self.__name, 'wb'))
+        else:
+            print """{0} already exists. Overwrite or not (y/n)?"""
+
+    
+    # get pools under current path %
+    def get_current_pool(self):
+        """
+        method:: to check whether there pools under current direction
+
+        return:: a list contained the filename of pool in current 
+                 direction, if not pool under current path, default
+                 return None.
+        """
+
+        current_pool = []
+
+        for p in os.walk('.').next()[2]:
+            # judge current pool is under running %
+            if p.endswith('.pool') and p.split('.')[0] in self.all_pools: 
+                
+                current_pool.append(p.split('.')[0])
+
+        if current_pool is not []:
+            
+            print 
+            is2select = raw_input("Do you want to check ONE taskflow? (n/y)")
+            print
+
+            if 'y' in is2select.lower():
+                
+                print "%% Please select on taskflow, default for all %%" 
+                for p in current_pool:
+                    print "%5s : %15s" % (str(current.index(p)), p)
+                
+                pool = input()
+                
+                while (not isinstance(pool, int) or pool >= len(current_pool)):
+                    
+                    if pool >= len(current):
+                        print "invalid the index, please input again...."
+                    
+                    if not isinstance(pool, int):
+                        print "please input the index number in [*]"
+
+                    pool = input()
+                
+                current_pool = current_pool[pool]
+
+        # return the result %
+        if current_pool == []:
+
+            return None
+
+        else:
+            return current_pool
+
+    #walk through all the tasks contained in tasksflow %
+    def collect_status(self, pool, status):
+
+       
+        nstatus = {}
+        for k in status: nstatus[k] = 0
+
+        nstatus['name'] = pool['name']
+        nstatus['path'] = pool['path']
+   
+        job_status = load_pool(nstatus['path'], nstatus['name'])
+
+        for j in job_status['tasks']:
+            if job_status['tasks'][j]['status'] in status:
+                
+                nstatus[job_status['tasks'][j]['status']] += 1
+        
+        return nstatus
+
+
+    def load_pool(self):
+
+        pass
+
+    def iter_pool(self):
+
+        pass
+
+    def check_pool(self):
+
+        pass
+
+    def update_pool(self):
+
+        pass
+
+    

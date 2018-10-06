@@ -1,0 +1,4 @@
+ipython >= 2.0
+django  >= 1.7
+numpy   >= 1.6.0
+ase >= 2.0

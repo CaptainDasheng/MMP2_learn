@@ -1,0 +1,285 @@
+#!/usr./bin/env python 
+
+#==============================================================================
+# global class for running the calculation contained multi-steps relaxation.
+#==============================================================================
+
+from utils import * 
+import os 
+import shutil
+
+class Compute(object):
+
+
+    def __init__(self, func, indir=None, outdir=None, restart=False, *args, **kwargs):
+
+        self.functional = func
+
+        if restart is True:
+
+            self.overwrite = True
+
+    def compute(self):
+
+        functional = self.functional
+
+        for f in functional.task:
+
+            if functional.task[f] is not []:
+
+                for task in functional.task[f]:
+
+                    self.relax(task, outdir=self.outdir+'/'+f)
+
+
+    def run(self):
+
+        pass
+    def relax(self):
+    
+        pass
+
+    def iteritems_steps(self):
+
+        pass
+        
+    def create_scripts(self, pool, cluster_info=None, tasks=None):
+
+        manager= get_manager(outdir)
+	
+        with open(outdir+'jump2.pbs', 'wb')  as f:
+
+	        f.write(manager)
+        #    f.write("# basic parrallel environment info %\n") 
+ 	    #f.write(cluster_envinfo) 
+       #for motion in ['optimize', 'scf', 'nonscf']:
+            
+        #    if 3 in tasks['optimize']:
+                
+        #       self.relax(pool)
+
+        if len(tasks['optimize']) > 0:
+            task = tasks['optimize'][0]
+            #multiRelax()
+        #if len(tasks['scf']) > 0:
+            
+
+
+
+
+        
+
+class RunTasks(object):
+    
+    def __init__(self, *args, **kwargs):
+
+
+        default_tasks = {'optimize':False,
+                          'band': False,
+                          'optics':False,
+                          'dos':False,
+                          'static_epsilon':False,
+                          'carriers':False,
+                          'dynamic':False,
+                          'nnp':False,
+                          'neb':False}
+
+        self.tasks = default_tasks.update(kwargs)
+
+        self.__runtasks__()
+
+    #check the jobs status % 
+    def task_status(self, stdin=None):
+
+        if is_exist(stdin):
+        
+            if is_done(stdin):
+                return False
+            else:
+                return True 
+        
+        else:
+            os.makedirs(stdin)
+            return True 
+
+    #basic running tasks %
+    def optimize(self, func, structure, task='cell', 
+                       stdout=None, max_steps=10, restart=False):
+
+        object_dir = stdout + '/optimize_{0}'.format(task)
+
+        if not is_exist(object_dir):
+            os.makedirs(object_dir)
+
+            n = 1
+            run_dir = object_dir+'/'+ str(n)
+            
+            #optimize the structure until converage % 
+            while n <= max_steps and self.task_status(run_dir):
+           
+                run_dir = object_dir+'/'+ str(n)
+                if n == 1:
+                    optimize_cell(func, structure, restart=False)
+                
+                else:
+                    stdin = object_dir+'/'+ str(n-1)
+                    optimize_cell(func, structure, run_dir,
+                                       stdin=stdin, restart=True)
+
+                n += 1
+                    
+
+    def optimize(stdout, stdin=None, restart=False):
+
+        os.makedirs(stdout)
+        if not restart:
+            with open(stdout+'/jump2', 'w') as f:
+
+                f.write('test_{0}'.format(stdout))
+                f.close()
+        else:
+            shutil.copy(stdin+'/jump2', stdout)
+            with open(stdout+'/jump2', 'w') as f:
+                f.write('test_{0}'.format(stdout))
+                f.close()
+
+    def task_status(stdin):
+
+       # if os.path.exists(stdin+'/jump2'):
+            
+       #     return False
+    #
+     #   else:
+     #       return True 
+
+    def optimize_cell(stdout=None, 
+                            max_steps=10, restart=False):
+
+        object_dir = stdout + '/optimize_cell'
+
+        if not os.path.exists(object_dir):
+            os.makedirs(object_dir)
+            n = 1
+             
+            rundir = object_dir+'/'+ str(n)
+            while n <= max_steps and task_status(rundir):
+           
+                rundir = object_dir+'/'+ str(n)
+                if n == 1:
+                    optimize(rundir, restart=False)
+                
+                else:
+                    stdin = object_dir+'/'+ str(n-1)
+                    optimize(stdout=rundir, stdin=stdin, restart=True)
+                    
+                n += 1
+
+                    
+
+
+
+        
+        
+        pass
+
+    def optimize_ions(self, max_steps=5, restart=False):
+        
+        pass
+
+    def scf(self, restart=False):
+
+        pass 
+
+    def nonscf(self, restart=True):
+
+        pass
+
+    def dynamic(self):
+
+        pass 
+        
+    def nnp(self):
+
+        pass
+
+
+    #detailed calculation % 
+
+    def __runtasks__(self):
+
+        tasks  =self.tasks 
+
+        for key in tasks:
+            
+            if key == 'optimize' and task[key]:
+
+                self.optimize_cell()
+
+                self.optimize_ions()
+
+                self.scf()
+
+            if key == 'band' and task[key]:
+
+                self.scf()
+
+                self.nonscf()
+
+            if key == 'dos' and task[key]:
+
+                self.scf()
+                self.nonscf()
+
+            if key == 'carriers' and task[key]:
+
+                self.scf()
+
+            if key == 'static_epsilon' and task[key]:
+
+                self.scf()
+
+            if key == 'dynamic' and task[key]:
+
+                self.optimize_ions()
+
+            if key == 'nnp' and task[key]:
+
+                pass 
+                
+
+
+def relax_rules(func):
+
+
+    if isinstance(func, vasp):
+
+        rule  = {}
+
+        if 'nnp' in func.tasks:
+            return None
+
+        else:
+            if func.isvasp5 is True:
+                rule[0] = {'ediff': 1e-3, 'kpoints':0.5}
+                rule[1] = {'ediff': func.ediff*1e2, 'kpoints':0.3}
+                rule[2] = {'ediff': func.ediff, 'kpoints':func.kpoints}
+            else:
+                rule[0] = {'ediff': 1e-3, 'kpoints':'\n0\nAuto\n8\n'}
+                rule[1] = {'ediff': func.ediff*1e2, 'kpoints':'\n0\nAuto\n16\n'}
+                rule[2] = {'ediff': func.ediff, 'kpoints':func.kpoints}
+
+        return rule 
+
+    if isinstance(func, gulp):
+
+        pass
+
+    if isinstance(func, pwscf):
+
+        pass
+    if isinstance(func, guassian):
+
+        pass
+    if isinstance(func, lammps):
+
+        pass

@@ -1,0 +1,28 @@
+####	[metadata]
+####	name = jump2
+
+####	author = Lijun Zhang, Xingang Zhao 
+
+####	author-email = lijun_zhang@jlu.edu.cn, xgzhao0201@gmail.com
+
+####	summary = platform for carrying out high throughput calculation
+
+####	description-file = README
+
+####	home-page = https://
+
+####	keywords  = 
+####		setup
+####		distutils
+
+####	[files]
+####	packages = src
+####	data_files = bin
+
+####	[entry_points]
+####	console_scripts = 
+####		jump2 = jump2.jump2:main
+
+
+
+

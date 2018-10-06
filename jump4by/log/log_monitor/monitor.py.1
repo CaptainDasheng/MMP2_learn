@@ -1,0 +1,104 @@
+#!/usr/bin/env python 
+#-*- coding: utf-8 -*-
+
+
+class Monitor(object):
+   
+    # 监控作业状态，等待，错误，中断，异常，失败，正常结束。
+    """
+    Monitor check the status of the running jobs and update the pool 
+    of sequene and recorrect the normal error.
+    """
+   
+    def __init__(self, *args, **kwargs):
+        
+        pool = self.__check_pool__()  # check the old pool
+        pool = self.__update__()      # update the job sequene
+        self.__status__ = None 
+
+    def __check_pool__(self):
+   
+        # 检查原有的作业池。
+        """
+        check all the jobs status in the pool.
+        """
+        
+        pass
+    
+
+    def __update__(self):
+
+        # 更新新的作业池。
+        """
+        Update the pool after the checking all the jobs status.
+        """
+
+        pass
+
+    def __check_status__(self):
+
+        # 检查作业池中任务状态。
+
+        pass
+
+    def jobtag(self):
+        
+        # 待执行。
+
+        self.__status__ = 'wait'
+
+        return 'wait'
+
+    def jobtag_break(self):
+        
+        # 中断状态。
+        
+        self.__status__ = 'break'
+        
+        return 'break'
+
+    def jobtag_error(self):
+        
+        # 作业异常。
+
+
+        self.__status__ = 'error'
+
+        return 'error'
+
+    def jobtag_failed(self):
+
+        # 执行失败。
+
+
+        self.__status__ = 'failed'
+
+        return 'failed'
+
+    def jobtag_success(self):
+
+        # 正常结束。
+
+        
+        self.__status__ = 'success'
+
+        return 'success'
+
+
+    def __repr__(self):
+
+
+        return self.__status__ 
+
+        #"""
+        #Return a tuple contained the jobs status.
+        #"""
+
+        #pl = "pool( %s," % ('Pool')
+
+
+        #for job in self.tasks:
+        #     for name in ['id', 'direction', 'status']:
+                 
+        #         pl += ",%s = %s " % ()
+   

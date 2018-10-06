@@ -1,0 +1,35 @@
+data_Tl1Cu3Se2
+#By Jump2
+_cell_length_a                          15.0275
+_cell_length_b                           3.9460
+_cell_length_c                           8.6481
+_cell_angle_alpha                       90.0000
+_cell_angle_beta                       110.7047
+_cell_angle_gamma                       90.0000
+_cell_volume                           479.6973
+_symmetry_space_group_name_H-M           -C 2y
+_symmetry_Int_Tables_number                12
+loop_
+_symmetry_equiv_pos_as_xyz
+    x,y,z
+    -x,y,-z
+    -x,-y,-z
+    x,-y,z
+    x+0.5,y+0.5,z
+    -x+0.5,y+0.5,-z
+    -x+0.5,-y+0.5,-z
+    x+0.5,-y+0.5,z
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_wyckoff_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+Tl1     Tl    i        0.05718200       0.00000000       0.40885800    1.00
+Cu1     Cu    i        0.08162600       0.50000000       0.62650000    1.00
+Cu2     Cu    i        0.18754000       0.50000000       0.45034400    1.00
+Cu3     Cu    i        0.02555600       0.50000000       0.22335500    1.00
+Se1     Se    i        0.19279900       0.00000000       0.67719500    1.00
+Se2     Se    i        0.13966700       0.00000000       0.05192500    1.00

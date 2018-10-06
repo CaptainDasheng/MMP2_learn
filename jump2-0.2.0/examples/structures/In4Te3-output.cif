@@ -1,0 +1,36 @@
+data_In4Te3
+#By Jump2
+_cell_length_a                          12.9952
+_cell_length_b                          16.0001
+_cell_length_c                           4.5159
+_cell_angle_alpha                       90.0000
+_cell_angle_beta                        90.0000
+_cell_angle_gamma                       90.0000
+_cell_volume                           938.9638
+_symmetry_space_group_name_H-M         -P 2 2n
+_symmetry_Int_Tables_number                58
+loop_
+_symmetry_equiv_pos_as_xyz
+    x,y,z
+    -x,-y,z
+    -x+0.5,y+0.5,-z+0.5
+    x+0.5,-y+0.5,-z+0.5
+    -x,-y,-z
+    x,y,-z
+    x+0.5,-y+0.5,z+0.5
+    -x+0.5,y+0.5,z+0.5
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_wyckoff_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_occupancy
+In1     In    g        0.02548300       0.68304801       0.50000000    1.00
+In2     In    g        0.10312200       0.92749298       0.50000000    1.00
+In3     In    g        0.14637899       0.53564602       0.50000000    1.00
+In4     In    g        0.15517800       0.21483301       0.50000000    1.00
+Te1     Te    g        0.13615900       0.77447200       0.00000000    1.00
+Te2     Te    g        0.13942400       0.09599600       0.00000000    1.00
+Te3     Te    g        0.14833499       0.42258501       0.00000000    1.00
